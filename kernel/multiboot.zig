@@ -71,7 +71,10 @@ pub const MultibootInfo = packed struct {
     pub fn loadModules(self: &const MultibootInfo) void {
         const mods = @intToPtr(&MultibootModule, self.mods_addr)[0..self.mods_count];
 
-        for (mods) |mod| {
+        // The first one is the kernel itself so we have access to the ELF/DWARF
+        @import("kmain.zig").kernel_multiboot_module = &mods[0];
+
+        for (mods[1..]) |mod| {
             const cmdline = cstr.toSlice(@intToPtr(&u8, mod.cmdline));
             tty.step("Loading \"{}\"", cmdline);
 

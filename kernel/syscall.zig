@@ -19,6 +19,7 @@ pub var handlers = []fn()void {
     SYSCALL(x86.inb),                 // 5
     SYSCALL(map),                     // 6
     SYSCALL(createThread),            // 7
+    SYSCALL(panic),                   // 8
 };
 
 ////
@@ -155,4 +156,9 @@ pub fn invalid() noreturn {
     tty.panic("invalid syscall number {d}", n);
 
     // TODO: kill the current process and go on.
+}
+
+inline fn panic() void {
+    var x: u8 = 255;
+    x += 1;
 }

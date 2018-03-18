@@ -34,6 +34,8 @@ fn execute(command: []u8) void {
         clear();
     } else if (mem.eql(u8, command, "version")) {
         version();
+    } else if (mem.eql(u8, command, "shityourpants")) {
+        zen.panic();
     } else {
         help();
     }

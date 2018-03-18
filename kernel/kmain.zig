@@ -9,7 +9,8 @@ const scheduler = @import("scheduler.zig");
 const tty = @import("tty.zig");
 const x86 = @import("x86.zig");
 const timer = @import("timer.zig");
-const assert = @import("std").debug.assert;
+const std = @import("std");
+const assert = std.debug.assert;
 const Color = tty.Color;
 
 ////
@@ -18,13 +19,35 @@ const Color = tty.Color;
 // Arguments:
 //     message: Reason for the panic.
 //
-pub fn panic(message: []const u8, stack_trace: ?&@import("builtin").StackTrace) noreturn {
+pub var kernel_multiboot_module: ?&MultibootModule = null;
+pub fn panic(message: []const u8, error_return_trace: ?&@import("builtin").StackTrace) noreturn {
     tty.writeChar('\n');
 
     tty.setBackground(Color.Red);
     tty.colorPrintf(Color.White, "KERNEL PANIC: {}\n", message);
 
+    if (kernel_multiboot_module) |kmod| {
+        const elf_file_ptr = @intToPtr(&u8, kmod.mod_start);
+        var elf_file = std.io.FixedBufferSeekableStream.init(elf_file_ptr[0.. kmod.mod_end - kmod.mod_start]);
+        var tty_out_stream = std.io.OutStream(NoError) { .writeFn = ttyWriteFn };
+        var debug_info = std.debug.openDebugInfo(std.debug.global_allocator, &elf_file.stream) catch |e| {
+            tty.printf("unable to dump stack trace: unable to open kernel debug info: {}\n", e);
+            x86.hang();
+        };
+        std.debug.writeCurrentStackTrace(&tty_out_stream, std.debug.global_allocator, debug_info, true, null) catch |e| {
+            tty.printf("unable to dump stack trace: {}\n", e);
+            x86.hang();
+        };
+    } else {
+        tty.write("panic occurred before kernel ELF/DWARF info was available\n");
+    }
+
     x86.hang();
+}
+
+const NoError = error{};
+fn ttyWriteFn(outstream: &std.io.OutStream(NoError), bytes: []const u8) NoError!void {
+    tty.write(bytes);
 }
 
 ////
