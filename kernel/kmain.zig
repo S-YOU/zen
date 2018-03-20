@@ -29,7 +29,7 @@ pub fn panic(message: []const u8, error_return_trace: ?&@import("builtin").Stack
     if (kernel_multiboot_module) |kmod| {
         const elf_file_ptr = @intToPtr(&u8, kmod.mod_start);
         var elf_file = std.io.FixedBufferSeekableStream.init(elf_file_ptr[0.. kmod.mod_end - kmod.mod_start]);
-        var tty_out_stream = std.io.OutStream(NoError) { .writeFn = ttyWriteFn };
+        var tty_out_stream = std.io.OutStream(error) { .writeFn = ttyWriteFn };
         var debug_info = std.debug.openDebugInfo(std.debug.global_allocator, &elf_file.stream) catch |e| {
             tty.printf("unable to dump stack trace: unable to open kernel debug info: {}\n", e);
             x86.hang();
@@ -45,8 +45,7 @@ pub fn panic(message: []const u8, error_return_trace: ?&@import("builtin").Stack
     x86.hang();
 }
 
-const NoError = error{};
-fn ttyWriteFn(outstream: &std.io.OutStream(NoError), bytes: []const u8) NoError!void {
+fn ttyWriteFn(outstream: &std.io.OutStream(error), bytes: []const u8) error!void {
     tty.write(bytes);
 }
 
